@@ -1,0 +1,596 @@
+/* Quicksilver: a dark theme for T3 Code with liquid metal edges and a quiet
+   grid of dots.
+
+   This file holds all the styles. build.py fills in the {{...}} placeholders
+   (the logo's shape and the liquid metal's gradients), strips the comments
+   and writes quicksilver.json.
+
+   Two rules run through the whole file, because breaking them made the app
+   flicker or tear while scrolling:
+   - Nothing behind the messages of a conversation moves.
+   - Whatever moves does so by `transform`, `opacity` or a registered custom
+     property inside a gradient. Nothing uses a live blur. */
+
+.dark {
+  /* One dot per 8px cell. Both dot layers use the same size and position so their dots line up. */
+  --qs-dot: radial-gradient(circle at 50% 50%, #fff 0 .85px, #fff0 1.35px);
+  --qs-cell: 8px 8px;
+}
+
+/* ---------- Frame and panel ----------
+   The sidebar, the top bar, the right panel and the terminal drawer (when
+   open) are one dark frame, with no lines between them. The chat sits in a
+   panel set into that frame: a thin border along its top and left, with a
+   rounded corner in the bend where the top bar meets the sidebar. While the
+   right panel is open, the chat panel also gets a border and a rounded corner on its right, so it meets the
+   right panel the same way it meets the sidebar, and while the terminal
+   drawer is open below it, it gets them along its bottom. Otherwise it runs
+   straight to the window's edges.
+
+   The panel is the chat body: the part of the chat column below its top bar
+   (the column's first div, since the top bar is a <header>). */
+
+.dark {
+  --qs-frame: #0a0a0a;
+  --qs-panel: #090909;
+  --qs-panel-border: #1d1d1d;
+  --qs-tick: #2e2e32;
+}
+
+.dark [data-chat-column] :is([data-chat-header], [data-workspace-area=conversation], [data-timeline-loading]) {
+  background: transparent !important;
+}
+
+.dark [data-chat-column] {
+  background-color: var(--qs-frame) !important;
+}
+
+.dark [data-chat-header] + div {
+  position: relative;
+  isolation: isolate;
+  border: solid var(--qs-panel-border);
+  border-width: 1px 0 0 1px;
+  border-top-left-radius: 12px;
+  background-color: var(--qs-panel);
+  overflow: clip;
+}
+
+/* Something open on the right: a matching border and corner on that side.
+   (A closed right panel stays in the page, marked unavailable.) */
+.dark [data-chat-column]:has(~ [data-preview-panel-mode]:not([data-workspace-unavailable])) > [data-chat-header] + div {
+  border-right-width: 1px;
+  border-top-right-radius: 12px;
+}
+
+/* And a short tick in the top bar, in line with that border, where the chat's
+   title row ends and the right panel's tabs begin. */
+.dark [data-chat-column]:has(~ [data-preview-panel-mode]:not([data-workspace-unavailable])) > [data-chat-header] {
+  background: linear-gradient(var(--qs-tick), var(--qs-tick)) 100% 50% / 1px 16px no-repeat !important;
+}
+
+/* The terminal drawer open below the chat: a border and rounded corners along
+   the panel's bottom too, the right one only when the right panel is also
+   open. (An open drawer is marked as the "terminal" area; a closed one is
+   not.) */
+.dark [data-chat-column]:has(> div > div > [data-workspace-area=terminal]) > [data-chat-header] + div {
+  border-bottom-width: 1px;
+  border-bottom-left-radius: 12px;
+}
+
+.dark [data-chat-column]:has(> div > div > [data-workspace-area=terminal]):has(~ [data-preview-panel-mode]:not([data-workspace-unavailable])) > [data-chat-header] + div {
+  border-bottom-right-radius: 12px;
+}
+
+/* The drawer is part of the frame: frame-colored, with no line along its top. */
+.dark [data-chat-column] > div > div > [data-thread-terminal-drawer] {
+  border-top-color: transparent !important;
+  background-color: var(--qs-frame) !important;
+}
+
+/* The right panel is part of the frame, like the sidebar: frame-colored, with
+   no line on its left edge (its resize handle still works). */
+.dark [data-preview-panel-mode] {
+  border-left-color: transparent !important;
+  background-color: var(--qs-frame) !important;
+}
+
+/* A side chat's title row (name, Bring back, trash, close): no line under it. */
+.dark [data-side-chat-pane] > div:first-child {
+  border-bottom-color: transparent !important;
+}
+
+/* A side chat in the right panel is frame too: no panel color and no dots. */
+.dark [data-preview-panel-mode] [data-chat-column] {
+  background-color: transparent !important;
+}
+
+.dark [data-preview-panel-mode] [data-chat-column] > div:first-of-type::before,
+.dark [data-preview-panel-mode] [data-chat-column] > div:first-of-type::after {
+  display: none;
+}
+
+/* ---------- Dot grid inside the panel ---------- */
+
+.dark [data-chat-column] > div:first-of-type {
+  position: relative;
+  isolation: isolate;
+}
+
+.dark [data-chat-column] > div:first-of-type::before,
+.dark [data-chat-column] > div:first-of-type::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: var(--qs-dot);
+  background-size: var(--qs-cell);
+  background-position: 50% 50%;
+}
+
+/* Faint dots everywhere, fading out toward the edges. */
+.dark [data-chat-column] > div:first-of-type::before {
+  opacity: .15;
+  mask-image: radial-gradient(ellipse 80% 75% at 50% 46%, #000 25%, #0006 70%, #0000 100%);
+}
+
+/* Brighter dots under a few soft, still patches.
+   Nothing here moves. The dots sit behind every message, and anything that
+   animates there (moving the patches, or even fading them on their own
+   layer) makes the app redraw or re-layer the whole chat on every frame,
+   which shows up as flicker and torn frames while scrolling. */
+.dark [data-chat-column] > div:first-of-type::after {
+  opacity: .34;
+  mask-image:
+    radial-gradient(closest-side, #000, #0008 45%, #0000),
+    radial-gradient(closest-side, #000c, #0006 50%, #0000),
+    radial-gradient(closest-side, #0009, #0004 50%, #0000);
+  mask-size: 52% 62%, 44% 52%, 60% 50%;
+  mask-repeat: no-repeat;
+  mask-position: 18% 26%, 84% 66%, 42% 96%;
+}
+
+/* In a conversation the dots step back so messages stay easy to read. */
+.dark [data-chat-column]:has(.messages-timeline-scroll) > div:first-of-type::before { opacity: .09; }
+.dark [data-chat-column]:has(.messages-timeline-scroll) > div:first-of-type::after { opacity: .16; }
+
+/* Behind the messages themselves the dots are dimmer still: a band of the
+   panel's color lies over them, at full strength exactly across the chat's
+   column of text, and fading out gently over the 110px on either side so
+   that it has no edge to see.
+
+   The band is the background of the list the messages scroll in. That list's
+   inner box is the lane the column is centered in, so centering the band in
+   it puts it exactly behind the column at any window size, with the details
+   card open or closed, and at any chat-width setting. It stays put while the
+   messages scroll over it. */
+.dark [data-chat-column]:not([data-preview-panel-mode] *) .messages-timeline-scroll {
+  --qs-dim-edge: 110px;
+  --qs-dim: .58;   /* how much of the dots the band hides */
+  background-image: linear-gradient(90deg,
+    #0000 0,
+    rgb(9 9 9 / calc(var(--qs-dim) * .1)) calc(var(--qs-dim-edge) * .28),
+    rgb(9 9 9 / calc(var(--qs-dim) * .42)) calc(var(--qs-dim-edge) * .58),
+    rgb(9 9 9 / calc(var(--qs-dim) * .82)) calc(var(--qs-dim-edge) * .84),
+    rgb(9 9 9 / var(--qs-dim)) var(--qs-dim-edge),
+    rgb(9 9 9 / var(--qs-dim)) calc(100% - var(--qs-dim-edge)),
+    rgb(9 9 9 / calc(var(--qs-dim) * .82)) calc(100% - var(--qs-dim-edge) * .84),
+    rgb(9 9 9 / calc(var(--qs-dim) * .42)) calc(100% - var(--qs-dim-edge) * .58),
+    rgb(9 9 9 / calc(var(--qs-dim) * .1)) calc(100% - var(--qs-dim-edge) * .28),
+    #0000 100%);
+  background-origin: content-box;
+  background-position: 50% 0;
+  background-size: calc(min(var(--chat-content-max-width, 46rem), 100%) + 2 * var(--qs-dim-edge)) 100%;
+  background-repeat: no-repeat;
+}
+
+/* ---------- The new-thread page: the bright patches drift ----------
+   On the new-thread page nothing scrolls, so there the grid can move: soft
+   patches of brighter dots wander slowly over it.
+
+   The dots themselves are never moved or redrawn. They are drawn once,
+   bright, on the panel. Over them slide two veils of the panel's own color,
+   in different directions, each with soft holes in it. Where holes of both
+   veils line up the dots show at full brightness, under one veil they are
+   dimmer, and under both they are faint. So the bright patches grow, shrink
+   and wander as the veils pass over each other.
+
+   Each veil's holes are four ovals of different sizes, some lying and some
+   standing, scattered unevenly so that some overlap, and the two veils repeat
+   at different distances (1040 and 1240 pixels). With one round hole on a
+   short repeat, the veils line up into a tidy grid of round spots now and
+   then. Each veil slides by exactly one repeat of its pattern per loop, so
+   the loop has no seam.
+
+   The veils move in 30 small steps a second (under 3 pixels each), not once
+   per screen refresh. The patches are too soft for the steps to show, and it
+   halves the graphics work of sliding two layers the size of the panel. */
+
+.dark [data-chat-column]:not([data-preview-panel-mode] *):not(:has(.messages-timeline-scroll)) > div:first-of-type {
+  background-image: radial-gradient(ellipse 85% 80% at 50% 46%, #0000 30%, var(--qs-panel) 100%), radial-gradient(circle at 50% 50%, #ffffffb3 0 .85px, #fff0 1.35px);
+  background-size: 100% 100%, var(--qs-cell);
+  background-position: 50% 50%;
+}
+
+/* A veil: the panel's color, cut through by its holes. */
+.dark [data-chat-column]:not([data-preview-panel-mode] *):not(:has(.messages-timeline-scroll)) > div:first-of-type::before,
+.dark [data-chat-column]:not([data-preview-panel-mode] *):not(:has(.messages-timeline-scroll)) > div:first-of-type::after {
+  opacity: 1;
+  background-image: none;
+  background-color: rgb(9 9 9 / .68);
+  mask-repeat: repeat;
+  mask-composite: intersect;
+  will-change: transform;
+}
+
+/* Slides down and to the left; it reaches past the panel on the sides it comes from. */
+.dark [data-chat-column]:not([data-preview-panel-mode] *):not(:has(.messages-timeline-scroll)) > div:first-of-type::before {
+  inset: -860px -1040px 0 0;
+  mask-image: radial-gradient(ellipse 350px 210px at 50% 50%, #0000 22%, #000 100%), radial-gradient(ellipse 200px 310px at 50% 50%, #0000 22%, #000 100%), radial-gradient(ellipse 300px 170px at 50% 50%, #0000 22%, #000 100%), radial-gradient(ellipse 250px 140px at 50% 50%, #0000 22%, #000 100%);
+  mask-size: 1040px 860px;
+  mask-position: 0 0, 430px 360px, 720px 60px, 150px 520px;
+  animation: qs-drift-a 17s steps(510) infinite;
+}
+
+/* Slides down and to the right. */
+.dark [data-chat-column]:not([data-preview-panel-mode] *):not(:has(.messages-timeline-scroll)) > div:first-of-type::after {
+  inset: -960px 0 0 -1240px;
+  mask-image: radial-gradient(ellipse 300px 250px at 50% 50%, #0000 45%, #000 100%), radial-gradient(ellipse 400px 190px at 50% 50%, #0000 45%, #000 100%), radial-gradient(ellipse 200px 250px at 50% 50%, #0000 45%, #000 100%), radial-gradient(ellipse 260px 160px at 50% 50%, #0000 45%, #000 100%);
+  mask-size: 1240px 960px;
+  mask-position: 120px 480px, 640px 100px, 930px 620px, 330px 30px;
+  animation: qs-drift-b 22s steps(660) infinite;
+}
+
+@keyframes qs-drift-a {
+  to { transform: translate(-1040px, 860px); }
+}
+
+@keyframes qs-drift-b {
+  to { transform: translate(1240px, 960px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dark [data-chat-column] > div:first-of-type::before,
+  .dark [data-chat-column] > div:first-of-type::after {
+    animation: none !important;
+  }
+}
+
+/* The new-thread heading: plain, bright and slightly tighter. */
+.dark [data-chat-column]:not(:has(.messages-timeline-scroll)) h1 {
+  color: #f4f4f4 !important;
+  font-weight: 500 !important;
+  letter-spacing: -.02em;
+}
+
+/* The line under it ("No project", or "or start without a project"): the
+   heading's white, with a dark halo so the dots don't cut through the
+   letters. T3 puts the line after the heading itself, or after the heading's
+   wrapper when the heading names a project, so both places are matched. */
+.dark [data-chat-composer-stack] :is(h1, [data-inline]) ~ p,
+.dark [data-chat-composer-stack] :is(h1, [data-inline]) ~ p * {
+  color: #f4f4f4 !important;
+  text-shadow: 0 0 3px var(--qs-panel), 0 0 8px var(--qs-panel);
+}
+
+.dark [data-chat-composer-stack] :is(h1, [data-inline]) ~ p :hover {
+  color: #fff !important;
+}
+
+/* ---------- Logo on the new-thread page ----------
+   The T3 mark above the heading, in the same liquid metal as the message box
+   (see "Liquid metal" below). It is a box filled with the wave and cut to
+   the mark's shape by a mask. build.py fills in the mask, the size and the
+   wave, which spreads in circles from a point just below the T.
+
+   T3 builds the heading in two ways: plain (no project), where the mark goes
+   before the heading's text, and with a project name, where it goes before
+   the heading's wrapper because that heading can lay its words out in a row.
+   The heading hangs above the message box, so the mark takes no room from
+   anything else. */
+
+.dark {
+  /* Lit from above: a little brighter at the top, darker at the bottom. */
+  --qs-logo-light: linear-gradient(180deg, #ffffff40 -14px, #fff0 16.2px, #0000 27.8px, #00000052 58px);
+}
+
+.dark [data-chat-composer-stack] :not([data-inline]) > h1::before,
+.dark [data-chat-composer-stack] [data-inline]:has(> h1)::before {
+  content: "";
+  display: block;
+  width: {{logo-width}};
+  height: {{logo-height}};
+  margin: 0 auto 22px;
+  background-image: var(--qs-logo-light), {{logo-wave}};
+  mask-image: {{logo-mask}};
+  mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+  animation: qs-cycle var(--qs-cycle) var(--qs-pace) infinite;
+}
+
+/* A very short window has no room for it. */
+@media (max-height: 30rem) {
+  .dark [data-chat-composer-stack] :not([data-inline]) > h1::before,
+  .dark [data-chat-composer-stack] [data-inline]:has(> h1)::before {
+    display: none;
+  }
+}
+
+/* ---------- Message box ---------- */
+
+/* The box is solid, so T3's live background blur under it does nothing.
+   Turned off: a live blur right next to the animated edge makes the app drop
+   the whole message box layer for a frame now and then while scrolling. */
+.dark [data-slot=composer-shell]::before {
+  border-radius: 12px !important;
+  background-color: #0b0b0b !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.dark :is([data-slot=composer-host], [data-chat-composer-main-surface]) {
+  border-radius: 12px !important;
+}
+
+/* A solid box, so the chat doesn't show through it. */
+.dark [data-slot=composer-host] {
+  background-color: #0b0b0b !important;
+}
+
+/* ---------- Raised surfaces ----------
+   The tab under the message box and the thread details
+   card that floats at the top right of the chat (computer, Open in, project
+   scripts) share one surface: near-black, a little lighter toward the bottom,
+   with a hairline edge that does the same. */
+
+.dark {
+  --qs-raised: linear-gradient(180deg, #0d0d0f, #151517);
+  --qs-raised-edge: linear-gradient(180deg, #1c1c1f, #303035);
+}
+
+/* T3 draws the card as blurred glass. It is solid here, so the live blur is
+   off, as on the message box. */
+.dark [data-thread-details-card] {
+  border: 1px solid #0000 !important;
+  background: var(--qs-raised) padding-box, var(--qs-raised-edge) border-box !important;
+  box-shadow: 0 16px 30px -18px #000, 0 2px 5px #0007;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* The tab under the message box. When T3 shows a row under the box (computer,
+   worktree, branch, access), the row becomes a tab that hangs from the box's
+   bottom edge: narrower than the box, tucked behind it at the top, with
+   rounded bottom corners. The tab is still; only the box's edge moves. (T3
+   gives the row a square, blurred glass surface of its own, which this
+   replaces.) */
+.dark [data-slot=composer-context-strip] {
+  box-sizing: border-box;
+  width: calc(100% - 36px) !important;
+  margin: -14px auto 0 !important;         /* the top 14px sit behind the box */
+  padding: 21px 12px 7px !important;
+  border: 1px solid #0000 !important;
+  border-top: 0 !important;
+  border-radius: 0 0 14px 14px;
+  background: var(--qs-raised) padding-box, var(--qs-raised-edge) border-box !important;
+  box-shadow: 0 16px 30px -18px #000, 0 2px 5px #0007;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* ---------- Sidebar ---------- */
+
+/* The sidebar is part of the frame: the same color and no line on its edge. */
+.dark [data-slot=sidebar-inner] {
+  background: var(--qs-frame) !important;
+  box-shadow: none !important;
+}
+
+.dark [data-slot=sidebar-container] {
+  border-color: transparent !important;
+}
+
+.dark [data-thread-item] [aria-current=page] {
+  border-radius: 8px !important;
+}
+
+/* ---------- Small surfaces ---------- */
+
+.dark :is([data-slot=popover-popup], [data-slot=menu-popup]) {
+  border-color: #262626 !important;
+  box-shadow: 0 16px 40px -12px #000000e6 !important;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #ffffff1a;
+  border-radius: 8px;
+}
+
+/* ---------- Liquid metal ----------
+   The edge of the message box, the ring of the send button and the logo
+   share one metal. It is not a rotation. It is one wave that repeats:
+
+   - A "front" is born at one point of an edge and runs away from it in both
+     directions until the two fronts meet on the far side. Then the next one
+     is born.
+   - Right behind a front the metal is dark navy. It brightens steadily back
+     to white, so each stretch of the edge is a soft gradient from dark (just
+     passed) to white (about to be passed again).
+   - The front itself is a sharp edge where the light splits: red, orange and
+     yellow, a thin white strip, then cyan, blue, purple and a last flash of
+     magenta and yellow.
+
+   The colors of one cycle, and when the front reaches each part of an edge,
+   are in build.py (WAVE_COLORS, BOX_TIMING, RING). build.py fills in the
+   {{...}} placeholders below from them.
+
+   How it is drawn:
+   - The message box: the edge is cut into nine stretches. For each one,
+     build.py knows when the front arrives at its two ends. Each stretch is a
+     repeating gradient of the wave whose centre moves with --qs-p, the
+     cycle's progress.
+   - The send button: the ring is split in two halves at the source and the
+     meeting point. Each half is a repeating conic gradient whose starting
+     angle moves with --qs-p, one clockwise and one counter-clockwise.
+
+   Nothing rotates as an element and nothing adds a graphics layer, so the app
+   has little to redraw. */
+
+/* Progress of the cycle, 0 to 1. */
+@property --qs-p {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
+.dark {
+  --qs-line: 2.5px;  /* the message box line */
+  --qs-band: 8px;    /* how far each edge's band reaches in from the edge */
+  --qs-cycle: {{cycle}};  /* one wave */
+  /* The wave advances in small steps, 60 a second, instead of once per screen
+     refresh. On a 120 Hz screen that halves the drawing work. */
+  --qs-pace: steps({{cycle-steps}});
+}
+
+/* ---------- The message box ---------- */
+
+/* A thin dark line just inside the metal, a hairline outside it, and a soft
+   shadow under the box. */
+.dark [data-slot=composer-host] {
+  box-shadow:
+    inset 0 0 0 calc(var(--qs-line) + 1px) #000,
+    0 0 0 .5px #000,
+    0 14px 34px -14px #000 !important;
+}
+
+/* T3 paints glass here when a context row sits under the box. It would cover
+   the inner line, and the box is solid anyway. */
+.dark [data-slot=composer-host]::before {
+  display: none !important;
+}
+
+/* The metal line: only the border area of this layer shows. */
+.dark [data-slot=composer-host]::after {
+  border: var(--qs-line) solid #0000 !important;
+  border-radius: 12px !important;
+  box-shadow: none !important;
+  background-image:
+    {{box-images}};
+  background-size: {{box-sizes}};
+  background-position: {{box-positions}};
+  background-repeat: no-repeat;
+  background-origin: border-box;
+  background-clip: border-box;
+  mask-image: linear-gradient(#000 0 0), linear-gradient(#000 0 0);
+  mask-clip: padding-box, border-box;
+  mask-composite: exclude;
+  animation: qs-cycle var(--qs-cycle) var(--qs-pace) infinite;
+}
+
+@keyframes qs-cycle {
+  to { --qs-p: 1; }
+}
+
+/* ---------- The send button ----------
+   T3's send button is the round button with the `isolate` class; the red
+   stop button doesn't have it, so it keeps its own look. */
+
+.dark [data-chat-composer-form] button.isolate.rounded-full {
+  background: linear-gradient(180deg, #2c2c2f, #060607) !important;
+  color: #9a9aa0 !important;
+  box-shadow: 0 2px 10px -2px #000e !important;
+}
+
+.dark [data-chat-composer-form] button.isolate.rounded-full:hover:not(:disabled) {
+  background: linear-gradient(180deg, #36363a, #0b0b0c) !important;
+  color: #c4c4ca !important;
+}
+
+/* Nothing to send yet: the same button, quieter. */
+.dark [data-chat-composer-form] button.isolate.rounded-full:disabled {
+  color: #55555a !important;
+}
+
+.dark [data-chat-composer-form] button.isolate.rounded-full:disabled::before,
+.dark [data-chat-composer-form] button.isolate.rounded-full:disabled::after {
+  opacity: .55;
+}
+
+/* The ring's two halves. The top layer of each is the ring's cross-section:
+   a thin dark line on its inner edge. */
+.dark [data-chat-composer-form] button.isolate.rounded-full::before,
+.dark [data-chat-composer-form] button.isolate.rounded-full::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid #0000;
+  pointer-events: none;
+  mask-image: linear-gradient(#000 0 0), linear-gradient(#000 0 0);
+  mask-clip: padding-box, border-box;
+  mask-composite: exclude;
+  animation: qs-cycle var(--qs-cycle) var(--qs-pace) infinite;
+}
+
+/* The front that runs clockwise from the source. */
+.dark [data-chat-composer-form] button.isolate.rounded-full::after {
+  clip-path: {{ring-cw-clip}};
+  background:
+    radial-gradient(closest-side, #0000 0 86%, #0009 87.5%, #0000 91%) border-box,
+    repeating-conic-gradient(from calc({{ring-source}} + var(--qs-p) * {{ring-wave}}), {{pal-cw}}) border-box;
+}
+
+/* The front that runs counter-clockwise from the source. */
+.dark [data-chat-composer-form] button.isolate.rounded-full::before {
+  clip-path: {{ring-ccw-clip}};
+  background:
+    radial-gradient(closest-side, #0000 0 86%, #0009 87.5%, #0000 91%) border-box,
+    repeating-conic-gradient(from calc({{ring-source}} - var(--qs-p) * {{ring-wave}}), {{pal-ccw}}) border-box;
+}
+
+/* ---------- The channel badge ----------
+   The small badge after "T3 Code" at the top of the sidebar ("Nightly"): a
+   pill with the same dark body and metal edge as the send button. It does not
+   move.
+
+   T3's header row hides the badge when it does not fit beside "T3 Code", so
+   the pill must take up exactly the room the plain badge did (its text plus
+   4px on each side). It is drawn 5px wider on each side than that, and the
+   negative margins take those 5px back out of the layout. */
+
+.dark {
+  /* The same metal, at rest: its silvers laid along the pill as one smooth
+     sweep with no sharp front, so it reads as still metal and not as a paused
+     animation. A highlight near each end, a mid grey between and after. It
+     never goes darker than that: on a pill this small, a dark stretch looks
+     like a piece of the edge is missing. */
+  --qs-badge-metal: linear-gradient(105deg,
+    #f5f5ff 0%, #d3d7e4 8%, #adb1c2 16%, #8b8ea4 27%,
+    #989baf 42%, #bfc3d2 56%, #e7eaf4 68%, #f5f5ff 76%,
+    #d3d7e4 84%, #a3a6b9 92%, #8b8ea4 100%);
+}
+
+.dark [data-environment-identification=pill] {
+  box-sizing: border-box;
+  height: 18px !important;
+  border: 2px solid #0000 !important;
+  border-radius: 999px !important;
+  padding-inline: 7px !important;
+  margin-inline: -5px !important;
+  background:
+    linear-gradient(180deg, #2c2c2f, #060607) padding-box,
+    var(--qs-badge-metal) border-box !important;
+  color: #dcdce2 !important;
+  /* a thin dark line just inside the metal, and a soft shadow under the pill */
+  box-shadow: inset 0 0 0 .5px #000, 0 2px 6px -2px #000d !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dark [data-chat-composer-stack] :not([data-inline]) > h1::before,
+  .dark [data-chat-composer-stack] [data-inline]:has(> h1)::before,
+  .dark [data-slot=composer-host]::after,
+  .dark [data-chat-composer-form] button.isolate.rounded-full::before,
+  .dark [data-chat-composer-form] button.isolate.rounded-full::after {
+    animation: none;
+  }
+}
