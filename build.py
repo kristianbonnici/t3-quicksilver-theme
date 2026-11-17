@@ -66,6 +66,16 @@ WAVE_COLORS = [
 # One wave takes this long everywhere: on the box, the ring and the logo.
 CYCLE_SECONDS = 5
 
+# What the message box edge does in a thread while the agent is not working.
+# (While it works, and on the new-thread page, the wave always runs at
+# CYCLE_SECONDS.)
+#   "still": the wave stops and the still metal shows (see --qs-box-still in
+#            theme.css).
+#   "slow":  the same wave, one pass every IDLE_CYCLE_SECONDS.
+IDLE_EDGE = "slow"
+IDLE_CYCLE_SECONDS = 15
+IDLE_UPDATES_PER_SECOND = 30
+
 # How many times a second the metal is redrawn. The wave moves in this many
 # small steps a second instead of once per screen refresh; on a 120 Hz screen
 # that halves the drawing work, and at 60 a second the steps cannot be seen.
@@ -232,6 +242,48 @@ def logo_tokens() -> dict[str, str]:
     }
 
 
+def idle_edge_rule() -> str:
+    """The CSS for IDLE_EDGE.
+
+    "slow" keeps one wave and only changes its speed, so it never jumps. Two
+    animations add up on the wave's progress (--qs-p): a slow one that always
+    runs, and a push that runs only while the agent works (and on the
+    new-thread page). Together they make one pass every CYCLE_SECONDS. A
+    paused animation keeps its value, so pausing or resuming the push changes
+    the speed without moving the wave.
+    """
+    if IDLE_EDGE == "still":
+        return ""
+    if IDLE_EDGE != "slow":
+        raise SystemExit(f"IDLE_EDGE must be 'still' or 'slow', not {IDLE_EDGE!r}")
+    push = 1 / (1 / CYCLE_SECONDS - 1 / IDLE_CYCLE_SECONDS)   # seconds per pass of the push alone
+    slow = f"qs-cycle {IDLE_CYCLE_SECONDS:g}s steps({round(IDLE_CYCLE_SECONDS * IDLE_UPDATES_PER_SECOND)}) infinite"
+    fast = f"qs-push {push:g}s steps({round(push * UPDATES_PER_SECOND)}) infinite"
+    host = ".dark [data-slot=composer-host]"
+    return f"""@keyframes qs-push {{
+  from {{ --qs-p: 0; }}
+  to {{ --qs-p: 1; }}
+}}
+
+@media (prefers-reduced-motion: no-preference) {{
+  {host}::after {{
+    opacity: 1;
+    transition: none;
+    animation: {slow}, {fast};
+    animation-composition: replace, add;
+    animation-play-state: running, paused;
+  }}
+  .dark [data-chat-composer-stack]:has(h1) [data-slot=composer-host]::after,
+  {host}:has(button[aria-label^="Stop"], button[aria-label="Queue message"], button[aria-label="Steer message"])::after {{
+    opacity: 1;
+    transition: none;
+    animation: {slow}, {fast};
+    animation-composition: replace, add;
+    animation-play-state: running, running;
+  }}
+}}"""
+
+
 def fill_tokens(css: str, tokens: dict[str, str]) -> str:
     def replace(match: re.Match) -> str:
         return tokens[match.group(1)]  # an unknown placeholder is an error
@@ -250,6 +302,7 @@ def main() -> None:
     tokens = {
         "cycle": f"{CYCLE_SECONDS:g}s",
         "cycle-steps": str(round(CYCLE_SECONDS * UPDATES_PER_SECOND)),
+        "idle-edge": idle_edge_rule(),
         **box_tokens(), **ring_tokens(), **logo_tokens(),
     }
     css = minify(fill_tokens((HERE / "theme.css").read_text(), tokens))

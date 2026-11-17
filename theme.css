@@ -463,14 +463,43 @@
     0 14px 34px -14px #000 !important;
 }
 
-/* T3 paints glass here when a context row sits under the box. It would cover
-   the inner line, and the box is solid anyway. */
+/* The edge has two layers, and only the border area of each shows.
+
+   - The still metal (::before): the metal at rest, laid along the box as one
+     smooth sweep with no sharp front. Always there. Three versions are kept
+     (see --qs-box-still below); the dark one is in use.
+   - The moving wave (::after): drawn over the still metal while it runs.
+
+   The wave runs on the new-thread page, and in a thread while the agent is
+   working. T3 shows a "Stop generation" button inside the box while a turn
+   can be stopped, or, once you start typing during a turn, a "Queue message"
+   or "Steer message" button in its place; that is how the theme tells. The rest of the time the
+   wave is hidden and stopped, so an idle thread costs nothing to draw. It
+   fades in when work starts and disappears at once when work ends.
+
+   T3 paints glass on ::before when a context row sits under the box; this
+   replaces it (the box is solid anyway). */
 .dark [data-slot=composer-host]::before {
-  display: none !important;
+  content: "" !important;
+  display: block !important;
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: auto !important;
+  pointer-events: none;
+  border: var(--qs-line) solid #0000 !important;
+  border-radius: 12px !important;
+  background: var(--qs-box-still) border-box !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  mask-image: linear-gradient(#000 0 0), linear-gradient(#000 0 0);
+  mask-clip: padding-box, border-box;
+  mask-composite: exclude;
 }
 
-/* The metal line: only the border area of this layer shows. */
+/* The moving wave. Hidden and stopped unless one of the rules below applies. */
 .dark [data-slot=composer-host]::after {
+  opacity: 0;
+  transition: none;
   border: var(--qs-line) solid #0000 !important;
   border-radius: 12px !important;
   box-shadow: none !important;
@@ -484,12 +513,44 @@
   mask-image: linear-gradient(#000 0 0), linear-gradient(#000 0 0);
   mask-clip: padding-box, border-box;
   mask-composite: exclude;
+}
+
+/* The still metal, three versions; --qs-box-still picks one.
+   - tinted: a highlight near each end with a warm tint after the first and a
+     cool one after the second, dark navy between and after.
+   - dark: the same sweep without the tints, silvers shading to dark navy.
+   - plain: only the silvers, never darker than a mid grey (as on the badge). */
+.dark {
+  --qs-box-still-tinted: linear-gradient(105deg,
+    #f5f5ff 0%, #f8eea6 7%, #da7341 12%, #6f1930 17%, #191a33 25%,
+    #34374f 41%, #808399 55%, #d3d7e4 67%, #f5f5ff 75%,
+    #c7fcfa 80%, #4180e4 85%, #552f9e 90%, #191a33 100%);
+  --qs-box-still-dark: linear-gradient(105deg,
+    #f5f5ff 0%, #d3d7e4 7%, #808399 13%, #34374f 19%, #191a33 27%,
+    #34374f 42%, #808399 56%, #d3d7e4 68%, #f5f5ff 76%,
+    #bfc3d2 82%, #5c5e77 89%, #222138 100%);
+  --qs-box-still-plain: var(--qs-badge-metal);
+  --qs-box-still: var(--qs-box-still-dark);
+}
+
+/* Running: on the new-thread page, and while the agent is working. */
+.dark [data-chat-composer-stack]:has(h1) [data-slot=composer-host]::after,
+.dark [data-slot=composer-host]:has(button[aria-label^="Stop"], button[aria-label="Queue message"], button[aria-label="Steer message"])::after {
+  opacity: 1;
+  transition: opacity .6s ease-out;
   animation: qs-cycle var(--qs-cycle) var(--qs-pace) infinite;
 }
 
 @keyframes qs-cycle {
   to { --qs-p: 1; }
 }
+
+/* Idle threads: what the edge does while the agent is not working is set by
+   IDLE_EDGE in build.py: still metal (nothing here), or the same wave at a
+   slower pace that speeds up without jumping when work starts (see
+   idle_edge_rule in build.py). Comes after the rules above so it overrides
+   them. */
+{{idle-edge}}
 
 /* ---------- The send button ----------
    T3's send button is the round button with the `isolate` class; the red
@@ -589,8 +650,19 @@
   .dark [data-chat-composer-stack] :not([data-inline]) > h1::before,
   .dark [data-chat-composer-stack] [data-inline]:has(> h1)::before,
   .dark [data-slot=composer-host]::after,
+  .dark [data-chat-composer-stack]:has(h1) [data-slot=composer-host]::after,
+  .dark [data-slot=composer-host]:has(button[aria-label^="Stop"], button[aria-label="Queue message"], button[aria-label="Steer message"])::after,
   .dark [data-chat-composer-form] button.isolate.rounded-full::before,
   .dark [data-chat-composer-form] button.isolate.rounded-full::after {
     animation: none;
+  }
+}
+
+/* With Reduce Motion on, the message box keeps its still metal throughout. */
+@media (prefers-reduced-motion: reduce) {
+  .dark [data-slot=composer-host]::after,
+  .dark [data-chat-composer-stack]:has(h1) [data-slot=composer-host]::after,
+  .dark [data-slot=composer-host]:has(button[aria-label^="Stop"], button[aria-label="Queue message"], button[aria-label="Steer message"])::after {
+    opacity: 0 !important;
   }
 }

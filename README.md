@@ -8,7 +8,7 @@ A dark theme for [T3 Code](https://t3.codes) with liquid metal edges. A wave of 
 
 ## What it changes
 
-- **Message box:** a solid near-black box with a liquid metal edge. A front is born on the bottom edge, runs both ways around the box and meets itself high on the right side, once every 5 seconds.
+- **Message box:** a solid near-black box with a liquid metal edge. A front is born on the bottom edge, runs both ways around the box and meets itself high on the right side. While the agent is working it passes once every 5 seconds; in an idle thread it slows to once every 15 seconds, so you can tell at a glance which threads are busy.
 - **Send button:** a dark round button with the same metal as a ring.
 - **New-thread page:** the T3 mark above the heading in the same metal, and soft patches of brighter dots that wander slowly over the grid.
 - **Conversations:** the grid stands still, and it is dimmer behind the column of messages, so text stays easy to read.
